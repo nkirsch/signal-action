@@ -1,0 +1,42 @@
+name: signal
+description: "Send an event to signal.nick.org, authenticated with the job's GitHub OIDC token (needs permissions id-token: write). Never fails the job."
+inputs:
+  event:
+    description: "Event name, e.g. deploy.success, or deploy.<job status>"
+    required: true
+  title:
+    description: Title, e.g. the site
+    required: true
+  message:
+    description: Message, e.g. the version
+    default: ''
+  url:
+    description: Link on success
+    default: ''
+  source:
+    description: Ignored; the source is always the repository
+    default: ''
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        EVENT: ${{ inputs.event }}
+        TITLE: ${{ inputs.title }}
+        MESSAGE: ${{ inputs.message }}
+        URL: ${{ inputs.url }}
+        SOURCE: ${{ inputs.source }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+          echo "::warning::signal: no OIDC token; add 'permissions: id-token: write' to this job"; exit 0
+        fi
+        tok=$(curl -fsS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+          "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://signal.nick.org" | jq -r .value) || {
+          echo "::warning::signal: could not mint an OIDC token"; exit 0; }
+        body=$(jq -n --arg event "$EVENT" --arg title "$TITLE" --arg message "$MESSAGE" \
+          --arg url "$URL" --arg source "$SOURCE" --arg run_url "$RUN_URL" \
+          '{event:$event, title:$title, message:$message, url:$url, source:$source, run_url:$run_url}')
+        curl -fsS --max-time 20 --retry 2 --retry-all-errors https://signal.nick.org/v1/events \
+          -H "Authorization: Bearer $tok" -H 'Content-Type: application/json' -d "$body" ||
+          echo "::warning::signal: delivery failed"
