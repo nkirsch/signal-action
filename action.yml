@@ -13,6 +13,12 @@ inputs:
   url:
     description: Link on success
     default: ''
+  subject:
+    description: "What the event is about, for per-subject state; deploy events default to the title"
+    default: ''
+  version:
+    description: "Version deployed; deploy events default to the message"
+    default: ''
   source:
     description: Ignored; the source is always the repository
     default: ''
@@ -25,6 +31,9 @@ runs:
         TITLE: ${{ inputs.title }}
         MESSAGE: ${{ inputs.message }}
         URL: ${{ inputs.url }}
+        SUBJECT: ${{ inputs.subject }}
+        VERSION: ${{ inputs.version }}
+        SHA: ${{ github.sha }}
         SOURCE: ${{ inputs.source }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
@@ -36,7 +45,9 @@ runs:
           echo "::warning::signal: could not mint an OIDC token"; exit 0; }
         body=$(jq -n --arg event "$EVENT" --arg title "$TITLE" --arg message "$MESSAGE" \
           --arg url "$URL" --arg source "$SOURCE" --arg run_url "$RUN_URL" \
-          '{event:$event, title:$title, message:$message, url:$url, source:$source, run_url:$run_url}')
+          --arg subject "$SUBJECT" --arg version "$VERSION" --arg sha "$SHA" \
+          '{event:$event, title:$title, message:$message, url:$url, source:$source, run_url:$run_url,
+            subject:$subject, version:$version, sha:$sha}')
         curl -fsS --max-time 20 --retry 2 --retry-all-errors https://signal.nick.org/v1/events \
           -H "Authorization: Bearer $tok" -H 'Content-Type: application/json' -d "$body" ||
           echo "::warning::signal: delivery failed"

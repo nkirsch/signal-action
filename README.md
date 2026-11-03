@@ -18,4 +18,7 @@ steps:
       url: https://example.nick.org
 ```
 
+Optional `subject` and `version` default to the title and message for
+`deploy.*` events; the commit SHA is always sent.
+
 `v1` moves to the latest compatible commit.
