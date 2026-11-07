@@ -19,6 +19,7 @@ steps:
 ```
 
 Optional `subject` and `version` default to the title and message for
-`deploy.*` events; the commit SHA is always sent.
+`deploy.*` events; the commit SHA is always sent, and `release_url` defaults
+to the GitHub release that triggered the run.
 
 `v1` moves to the latest compatible commit.

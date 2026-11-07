@@ -19,6 +19,9 @@ inputs:
   version:
     description: "Version deployed; deploy events default to the message"
     default: ''
+  release_url:
+    description: "GitHub release page; defaults to the release that triggered the run"
+    default: ${{ github.event.release.html_url }}
   source:
     description: Ignored; the source is always the repository
     default: ''
@@ -35,6 +38,7 @@ runs:
         VERSION: ${{ inputs.version }}
         SHA: ${{ github.sha }}
         SOURCE: ${{ inputs.source }}
+        RELEASE_URL: ${{ inputs.release_url }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
         if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
@@ -46,8 +50,9 @@ runs:
         body=$(jq -n --arg event "$EVENT" --arg title "$TITLE" --arg message "$MESSAGE" \
           --arg url "$URL" --arg source "$SOURCE" --arg run_url "$RUN_URL" \
           --arg subject "$SUBJECT" --arg version "$VERSION" --arg sha "$SHA" \
+          --arg release_url "$RELEASE_URL" \
           '{event:$event, title:$title, message:$message, url:$url, source:$source, run_url:$run_url,
-            subject:$subject, version:$version, sha:$sha}')
+            subject:$subject, version:$version, sha:$sha, release_url:$release_url}')
         curl -fsS --max-time 20 --retry 2 --retry-all-errors https://signal.nick.org/v1/events \
           -H "Authorization: Bearer $tok" -H 'Content-Type: application/json' -d "$body" ||
           echo "::warning::signal: delivery failed"
